@@ -1,0 +1,36 @@
+name: Bug report / model report
+description: Something doesn't work, or tell us it works on your Mac
+labels: [bug]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Mac model
+      description: Apple menu → About This Mac, e.g. "MacBook Pro 16-inch, M5 Max"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "27.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Apfellicht?
+      options: [Downloaded ZIP, make install, Claude Code]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of `make status` (if you built from source)
+      render: text

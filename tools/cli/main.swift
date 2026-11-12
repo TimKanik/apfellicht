@@ -7,7 +7,7 @@ import Foundation
 //   apfellicht-cli set 0.4    feste Helligkeit (0–1)
 MainActor.assumeIsolated {
     guard let service = BrightnessService() else { print("CoreBrightness nicht verfügbar"); exit(1) }
-    let logo = LogoControl(service: service)
+    let logo = LogoControl(service: service, store: UserDefaults(suiteName: "de.timkanik.apfellicht") ?? .standard)
     let args = Array(CommandLine.arguments.dropFirst())
     switch args.first {
     case "reset":

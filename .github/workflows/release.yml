@@ -1,0 +1,64 @@
+name: Release
+
+# Builds Apfellicht.zip from the tagged source on GitHub's servers and attaches it to a draft release,
+# with a SHA-256 checksum and (in the public repository) a signed build attestation.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - name: Select the newest Xcode
+        run: |
+          XCODE="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Build
+        # No signing identity on the runner, so the app is signed ad hoc.
+        run: VERSION="${TAG#v}" SIGN_IDENTITY=- scripts/build-app.sh
+
+      - name: Zip
+        run: |
+          cd build
+          ditto -c -k --keepParent Apfellicht.app Apfellicht.zip
+          shasum -a 256 Apfellicht.zip | tee Apfellicht.zip.sha256
+
+      - name: Attest
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: build/Apfellicht.zip
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SUM="$(cut -d' ' -f1 build/Apfellicht.zip.sha256)"
+          NOTES="$(awk '/^## /{n++} n==1' CHANGELOG.md | tail -n +2)"
+          BODY="$(printf '%s\n\n**SHA-256** `%s`\n\nFirst time opening it? See [Install → Option 3](https://github.com/%s#option-3-download-the-app).' "$NOTES" "$SUM" "$GITHUB_REPOSITORY")"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" build/Apfellicht.zip build/Apfellicht.zip.sha256 --clobber
+            gh release edit "$TAG" --notes "$BODY"
+          else
+            gh release create "$TAG" build/Apfellicht.zip build/Apfellicht.zip.sha256 --draft --title "Apfellicht ${TAG#v}" --notes "$BODY"
+          fi

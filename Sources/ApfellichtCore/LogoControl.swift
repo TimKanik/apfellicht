@@ -2,7 +2,7 @@ import Foundation
 
 /// Das leuchtende Apple-Logo auf der Rückseite (MacBook Pro mit PROLED XDR Display).
 ///
-/// So rechnet `corebrightnessd` (gemessen, siehe docs/forschung.md):
+/// So rechnet `corebrightnessd` (gemessen, siehe docs/research.md):
 ///
 ///     PWMNitsPreRestriction = LEPWMBrightnessNitsMapping(Display-Nits)
 ///     AppliedNits           = clamp(Pre, Min(Lux), Max(Lux))
@@ -31,8 +31,10 @@ public final class LogoControl {
     /// Höchste Logo-Helligkeit, die Apples eigene Tabellen vorsehen.
     public static let maxNits = 1000.0
 
-    /// Apples Werkstabellen, ausgelesen auf Mac17,13 mit macOS 27.2.
-    static let factory: [String: [[Double]]] = [
+    /// Apples Werkstabellen, ausgelesen auf Mac17,13 mit macOS 27.2. Nur Rückfall: Die App liest die
+    /// Tabellen des eigenen Macs beim ersten Start aus (`captureFactoryTables`), denn andere Modelle
+    /// können andere haben.
+    static let fallbackFactory: [String: [[Double]]] = [
         Key.nitsMapping: [[0, 0], [0.1, 12.5], [16.84, 12.5], [34.12, 28.62], [50, 45.37], [69.11, 65.52],
                           [140, 150], [300, 300], [600, 1000], [top, 1000]],
         Key.maxMapping: [[0, 180], [190, 1000], [top, 1000]],
@@ -40,9 +42,29 @@ public final class LogoControl {
     ]
 
     private let service: BrightnessService
+    private let store: UserDefaults
+    private static let factoryKey = "factoryTables"
 
-    public init(service: BrightnessService) {
+    /// `store` hält die ausgelesenen Werkstabellen, damit auch das Kommandozeilen-Werkzeug sie findet.
+    public init(service: BrightnessService, store: UserDefaults) {
         self.service = service
+        self.store = store
+    }
+
+    /// Liest Apples Tabellen einmalig aus, solange sie noch unverändert sind (Apples Haupttabelle hat
+    /// viele Stützpunkte, Apfellichts flache nur zwei).
+    public func captureFactoryTables() {
+        guard store.dictionary(forKey: Self.factoryKey) == nil else { return }
+        var tables: [String: [[Double]]] = [:]
+        for key in [Key.nitsMapping, Key.maxMapping, Key.minMapping] {
+            guard let rows = service.value(key) as? [[NSNumber]], rows.count > 2 || key != Key.nitsMapping else { return }
+            tables[key] = rows.map { $0.map(\.doubleValue) }
+        }
+        store.set(tables, forKey: Self.factoryKey)
+    }
+
+    var factory: [String: [[Double]]] {
+        (store.dictionary(forKey: Self.factoryKey) as? [String: [[Double]]]) ?? Self.fallbackFactory
     }
 
     /// Ob dieser Mac ein ansteuerbares Logo hat.
@@ -104,7 +126,7 @@ public final class LogoControl {
 
     /// Zurück zu Apples Automatik: Werkstabellen, Logo an.
     public func restoreApple() {
-        for (key, table) in Self.factory { service.set(table, key) }
+        for (key, table) in factory { service.set(table, key) }
         setOn(true)
         service.nudgeRecompute()
     }

@@ -6,7 +6,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-1.0.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 BUNDLE_ID="${BUNDLE_ID:-de.timkanik.apfellicht}"
 if [ -z "${SIGN_IDENTITY:-}" ]; then
@@ -33,6 +33,17 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Apfellicht"
 fill Resources/Info.plist "$APP/Contents/Info.plist"
+cp -R Resources/en.lproj Resources/de.lproj "$APP/Contents/Resources/"
+
+echo "==> Icons kompilieren"
+# App-Icon und das eigene Symbol (Menüleiste, Kontrollzentrum) aus Resources/Assets.xcassets.
+compile_assets() {
+    xcrun actool --compile "$1" --platform macosx --minimum-deployment-target "$2" $3 \
+        --output-partial-info-plist "build/assets-$2.plist" --output-format human-readable-text \
+        --errors Resources/Assets.xcassets > "build/actool-$2.log" 2>&1 || { cat "build/actool-$2.log" >&2; exit 1; }
+}
+compile_assets "$APP/Contents/Resources" 14.0 "--app-icon AppIcon"
+/usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
 
 echo "==> Kontrollzentrum-Erweiterung bauen"
 PROCESSOR="$(xcrun --find appintentsmetadataprocessor)"
@@ -51,6 +62,8 @@ xcrun swiftc -module-name ApfellichtControls -O -whole-module-optimization -swif
     -Xlinker -application_extension -Xlinker -e -Xlinker _NSExtensionMain \
     -o "$APPEX/Contents/MacOS/ApfellichtControls" $SOURCES
 fill Controls/Info.plist "$APPEX/Contents/Info.plist"
+cp -R Controls/en.lproj Controls/de.lproj "$APPEX/Contents/Resources/"
+compile_assets "$APPEX/Contents/Resources" 26.0 ""
 printf '%s\n' $SOURCES > "$OBJ/sources.txt"
 echo "$OBJ/ApfellichtControls.swiftconstvalues" > "$OBJ/constvalues.txt"
 : > "$OBJ/none.txt"

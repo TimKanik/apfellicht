@@ -47,10 +47,11 @@ final class AppModel {
 
     var isAvailable: Bool { logo?.isAvailable ?? false }
 
-    init() {
+    /// `renderOnly`: nur Werte lesen, nichts anwenden (für README-Bilder).
+    init(renderOnly: Bool = false) {
         let service = BrightnessService()
         self.service = service
-        logo = service.map(LogoControl.init(service:))
+        logo = service.map { LogoControl(service: $0, store: .standard) }
 
         defaults.register(defaults: [Pref.logoLevel: 0.45, Pref.logoOn: true, Pref.keyboardOn: true,
                                      Pref.lidGlow: false, Pref.appleMode: false,
@@ -67,6 +68,8 @@ final class AppModel {
             keyboardLevel = Double(service?.keyboardBrightness ?? 0.5)
         }
 
+        guard !renderOnly else { return }
+        if logo?.isAvailable == true { logo?.captureFactoryTables() }
         service?.disableKeyboardAutoBrightness()
         applyLogo()
         applyKeyboard()
@@ -91,7 +94,7 @@ final class AppModel {
     // MARK: Logo
 
     private func applyLogo() {
-        guard let logo, !appleMode else { return }
+        guard let logo, !appleMode, logo.isAvailable else { return }
         logo.setOn(logoOn)
         if logoOn { logo.apply(level: logoLevel) }
         refreshStatus()
@@ -112,7 +115,7 @@ final class AppModel {
     }
 
     private func refreshStatus() {
-        guard let logo else { return }
+        guard let logo, logo.isAvailable else { return }
         appliedNits = logo.appliedNits
         waitsForLightChange = !appleMode && logoOn && logo.waitsForLightChange(level: logoLevel)
     }
@@ -139,7 +142,7 @@ final class AppModel {
     // MARK: Deckel
 
     private func updateLid() {
-        guard let logo else { return }
+        guard let logo, logo.isAvailable else { return }
         let closed = Lid.isClosed ?? false
         let want = closed && lidGlow && logoOn && !appleMode && (service?.hasExternalDisplay ?? false)
         if want && !lidOverride {
@@ -165,7 +168,7 @@ final class AppModel {
         ticks += 1
         updateLid()
         adoptKeyboardKeys()
-        if ticks % 5 == 0, logoOn, !appleMode, let logo {
+        if ticks % 5 == 0, logoOn, !appleMode, let logo, logo.isAvailable {
             logo.ensure(level: logoLevel)
         }
         refreshStatus()

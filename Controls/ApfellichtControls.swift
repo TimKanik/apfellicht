@@ -18,12 +18,12 @@ struct LogoControlWidget: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: ControlLink.logoKind, provider: LightValue(light: .logo)) { isOn in
             ControlWidgetToggle(isOn: isOn, action: SetLogoIntent()) {
-                Label("Apple-Logo", systemImage: "apple.logo")
+                Label("Logo Light", image: "apfellicht")
             }
             .tint(.orange)
         }
-        .displayName("Apple-Logo")
-        .description("Schaltet das Logo auf dem Deckel an oder aus.")
+        .displayName("Logo Light")
+        .description("Turns the logo on the lid on or off.")
     }
 }
 
@@ -31,12 +31,12 @@ struct KeyboardControlWidget: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: ControlLink.keyboardKind, provider: LightValue(light: .keyboard)) { isOn in
             ControlWidgetToggle(isOn: isOn, action: SetKeyboardIntent()) {
-                Label("Tastaturlicht", systemImage: "keyboard")
+                Label("Keyboard Light", systemImage: "keyboard")
             }
             .tint(.orange)
         }
-        .displayName("Tastaturlicht")
-        .description("Schaltet die Tastaturbeleuchtung an oder aus.")
+        .displayName("Keyboard Light")
+        .description("Turns the keyboard backlight on or off.")
     }
 }
 
@@ -53,8 +53,8 @@ struct LightValue: ControlValueProvider {
 }
 
 struct SetLogoIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Apple-Logo an oder aus"
-    @Parameter(title: "Apple-Logo") var value: Bool
+    static let title: LocalizedStringResource = "Turn Logo Light On or Off"
+    @Parameter(title: "Logo Light") var value: Bool
     init() {}
     func perform() async throws -> some IntentResult {
         _ = try await ContainingApp.ask(value ? .logoOn : .logoOff)
@@ -63,8 +63,8 @@ struct SetLogoIntent: SetValueIntent {
 }
 
 struct SetKeyboardIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Tastaturlicht an oder aus"
-    @Parameter(title: "Tastaturlicht") var value: Bool
+    static let title: LocalizedStringResource = "Turn Keyboard Light On or Off"
+    @Parameter(title: "Keyboard Light") var value: Bool
     init() {}
     func perform() async throws -> some IntentResult {
         _ = try await ContainingApp.ask(value ? .keyboardOn : .keyboardOff)
@@ -76,8 +76,8 @@ enum ControlError: Error, CustomLocalizedStringResourceConvertible {
     case notResponding, busy
     var localizedStringResource: LocalizedStringResource {
         switch self {
-        case .notResponding: "Apfellicht antwortet nicht. Öffne Apfellicht und versuch es nochmal."
-        case .busy: "Apfellicht ist gerade beschäftigt. Versuch es gleich nochmal."
+        case .notResponding: "Apfellicht isn't responding. Open Apfellicht and try again."
+        case .busy: "Apfellicht is busy. Try again in a moment."
         }
     }
 }
