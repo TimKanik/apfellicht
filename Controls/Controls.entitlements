@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Erweiterungen müssen sandboxed sein, sonst ignoriert macOS sie. -->
+	<key>com.apple.security.app-sandbox</key><true/>
+	<!-- Das Einzige, was sie erreichen darf: den Port der App. -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array><string>$(BUNDLE_ID).control</string></array>
+</dict>
+</plist>
