@@ -54,11 +54,17 @@ TOOLCHAIN="$(cd "$(dirname "$PROCESSOR")/../.." && pwd)"
 rm -rf "$OBJ"
 mkdir -p "$OBJ" "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
 SOURCES="Controls/ApfellichtControls.swift Sources/ApfellichtCore/ControlLink.swift"
+# Xcode 27 kennt -const-gather-protocols-list als Treiber-Flag, Xcode 26 nur als Frontend-Flag (-file).
+if xcrun swiftc -help-hidden 2>/dev/null | grep -q -- '-const-gather-protocols-list'; then
+    CONST_FLAGS="-const-gather-protocols-list Controls/const_extract_protocols.json"
+else
+    CONST_FLAGS="-Xfrontend -const-gather-protocols-file -Xfrontend Controls/const_extract_protocols.json"
+fi
 # shellcheck disable=SC2086
 xcrun swiftc -module-name ApfellichtControls -O -whole-module-optimization -swift-version 6 \
     -sdk "$SDK" -target "$TARGET" -application-extension -parse-as-library \
     -emit-const-values-path "$OBJ/ApfellichtControls.swiftconstvalues" \
-    -const-gather-protocols-list Controls/const_extract_protocols.json \
+    $CONST_FLAGS \
     -Xlinker -application_extension -Xlinker -e -Xlinker _NSExtensionMain \
     -o "$APPEX/Contents/MacOS/ApfellichtControls" $SOURCES
 fill Controls/Info.plist "$APPEX/Contents/Info.plist"
